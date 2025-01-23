@@ -1,6 +1,5 @@
 # Telegram Scrapper Bot - GRAMJS
 
-![Banner](https://via.placeholder.com/800x200.png?text=Telegram+Scrapper+Bot+-+GRAMJS)
 
 ## Overview
 
@@ -96,5 +95,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 - **Tas33n** - [GitHub](https://github.com/tas33n)
 - **GitHub Copilot**
-
-![Footer](https://via.placeholder.com/800x100.png?text=Thank+You+for+Using+Telegram+Scrapper+Bot+-+GRAMJS)
