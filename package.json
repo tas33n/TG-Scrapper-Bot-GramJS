@@ -1,0 +1,40 @@
+{
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "cli-select": "^1.1.2",
+    "cli-table3": "^0.6.5",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.7",
+    "fs-extra": "^11.3.0",
+    "gradient-string": "^2.0.2",
+    "input": "^1.0.1",
+    "inquirer": "^8.2.4",
+    "telegram": "^2.26.16"
+  },
+  "name": "tg-scrapper-bot-gramjs",
+  "version": "1.0.0",
+  "description": "A simple telegram scrapper bot using gramjs, can dump members from groups, channels and DMs and send mass messages to the dumped members.",
+  "main": "src/bot.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/bot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tas33n/TG-Scrapper-Bot-GramJS.git"
+  },
+  "keywords": [
+    "gramjs",
+    "tg",
+    "telegram-bot",
+    "tg-scrapper",
+    "tg-mass-message-sender"
+  ],
+  "author": "tas33n",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tas33n/TG-Scrapper-Bot-GramJS/issues"
+  },
+  "homepage": "https://github.com/tas33n/TG-Scrapper-Bot-GramJS#readme"
+}
