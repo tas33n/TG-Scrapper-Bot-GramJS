@@ -1,16 +1,15 @@
 # Telegram Scrapper Bot - GRAMJS
 
-
 ## Overview
 
 Telegram Scrapper Bot - GRAMJS is a powerful tool designed to scrape members from Telegram groups, channels, and private chats. It also allows sending messages to the scraped members. This bot is built using the [GramJS](https://github.com/gram-js/gramjs) library.
 
-## Features
-
-- **Scrape Members**: Extract members from groups, channels, and private chats.
-- **Send Messages**: Send messages to the scraped members.
 - **Session Management**: Save and load sessions to avoid repeated logins.
 - **Interactive CLI**: User-friendly command-line interface for easy interaction.
+
+## Demo
+
+![Preview](prev.gif)
 
 ## Installation
 
@@ -58,7 +57,6 @@ Telegram Scrapper Bot - GRAMJS is a powerful tool designed to scrape members fro
     - **Send Messages to Dumped Members**: Send messages to the scraped members.
     - **Exit**: Exit the bot.
 
-## Example
 
 ### Dumping Members
 
