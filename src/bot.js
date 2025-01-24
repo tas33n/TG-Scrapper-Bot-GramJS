@@ -105,7 +105,7 @@ async function saveSession(client) {
         inquirer
           .prompt([
             {
-              type: "password",
+              type: "input",
               name: "password",
               message: "Enter your password (if 2FA enabled):",
             },
@@ -144,6 +144,7 @@ async function saveSession(client) {
       { name: "Dump Members from Channels(Admin)", value: "dump_channels" },
       { name: "Dump Private Chats (DMs)", value: "dump_dms" },
       { name: "Send Messages to Dumped Members", value: "send_messages" },
+      { name: "Add Members to Groups/Channels", value: "add_members" },
       { name: "Exit", value: "exit" },
     ];
 
@@ -214,6 +215,119 @@ async function saveSession(client) {
       );
       fs.writeJsonSync(filePath, members, { spaces: 2 });
       console.log(gradient.passion(`Saved members to ${filePath}`));
+    }
+
+    console.log("\nReturning to the main menu...");
+    await inquirer.prompt([
+      {
+        type: "input",
+        name: "return",
+        message: "Press Enter to return to the main menu...",
+      },
+    ]);
+  }
+
+  // Function to add members to a group or channel (admin-only)
+  async function addMembersToGroupOrChannel() {
+    console.clear();
+
+    // Select a JSON file
+    const files = fs.readdirSync(dumpDir).filter((file) => file.endsWith(".json"));
+    if (files.length === 0) {
+      console.log("No JSON files found in the dump directory.");
+      console.log("\nReturning to the main menu...");
+      await inquirer.prompt([
+        {
+          type: "input",
+          name: "return",
+          message: "Press Enter to return to the main menu...",
+        },
+      ]);
+      return;
+    }
+
+    let selectedFile = files[0];
+    if (files.length > 1) {
+      const { fileChoice } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "fileChoice",
+          message: "Select a JSON file to add members from:",
+          choices: files,
+        },
+      ]);
+      selectedFile = fileChoice;
+    }
+
+    const members = fs.readJsonSync(path.join(dumpDir, selectedFile));
+    console.log(gradient.fruit(`Loaded ${members.length} members from ${selectedFile}`));
+
+    // Select a target group/channel (admin-only)
+    const dialogs = await client.getDialogs();
+    const adminGroupsAndChannels = [];
+
+    for (const dialog of dialogs) {
+      if (dialog.isGroup || (dialog.isChannel && dialog.entity.megagroup)) {
+        try {
+          const participants = await client.getParticipants(dialog.id);
+          const me = participants.find(
+            async (p) => p.id === (await client.getMe()).id
+          );
+          if (me && me.adminRights) {
+            adminGroupsAndChannels.push(dialog);
+          }
+        } catch (err) {
+          console.error(chalk.red(`Error checking admin status for ${dialog.title || dialog.name}: ${err.message}`));
+        }
+      }
+    }
+
+    if (adminGroupsAndChannels.length === 0) {
+      console.log(chalk.red("You are not an admin in any group or channel."));
+      console.log("\nReturning to the main menu...");
+      await inquirer.prompt([
+        {
+          type: "input",
+          name: "return",
+          message: "Press Enter to return to the main menu...",
+        },
+      ]);
+      return;
+    }
+
+    const choices = adminGroupsAndChannels.map((dialog) => ({
+      name: `${dialog.title} (ID: ${dialog.id})`,
+      value: dialog,
+    }));
+
+    const { selectedDialog } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "selectedDialog",
+        message: "Select a group/channel to add members to:",
+        choices: [...choices, { name: "Return to Main Menu", value: null }],
+      },
+    ]);
+
+    if (!selectedDialog) return;
+
+    console.log(
+      gradient.vice(`Adding members to: ${selectedDialog.title} (ID: ${selectedDialog.id})\n`)
+    );
+
+    // Add members to the group/channel
+    for (const member of members) {
+      try {
+        await client.addChatUser(selectedDialog.id, member.id, {
+          fwdLimit: 0,
+        });
+        console.log(gradient.mind(`Added member: ${member.username || member.id}`));
+      } catch (err) {
+        console.error(
+          chalk.red(`Failed to add member: ${member.username || member.id}`),
+          err.message
+        );
+      }
     }
 
     console.log("\nReturning to the main menu...");
@@ -301,6 +415,7 @@ async function saveSession(client) {
       await dumpMembers((d) => d.isChannel, "channel");
     else if (choice === "dump_dms") await dumpMembers((d) => d.isUser, "dm");
     else if (choice === "send_messages") await sendMessages();
+    else if (choice === "add_members") await addMembersToGroupOrChannel();
     else if (choice === "exit") {
       console.log(gradient.morning("Exiting. Goodbye!"));
       break;
