@@ -1,4 +1,4 @@
-const { TelegramClient } = require("telegram");
+const { TelegramClient, Api } = require("telegram");
 const { StringSession } = require("telegram/sessions");
 const fs = require("fs-extra");
 const inquirer = require("inquirer");
@@ -227,12 +227,49 @@ async function saveSession(client) {
     ]);
   }
 
+  async function resolveEntity(client, userId) {
+    try {
+      const entity = await client.getInputEntity(userId);
+      return entity;
+    } catch (err) {
+      console.error(
+        `Failed to resolve entity for userId: ${userId}`,
+        err.message
+      );
+      return null;
+    }
+  }
+
+  async function addUserAsContact(client, phone, firstName, lastName = "") {
+    try {
+      const result = await client.invoke(
+        new Api.contacts.ImportContacts({
+          contacts: [
+            new Api.InputPhoneContact({
+              clientId: Math.random(),
+              phone: phone,
+              firstName: firstName,
+              lastName: lastName,
+            }),
+          ],
+        })
+      );
+      console.log(`Added temporary contact: ${firstName}`);
+      return result.users[0];
+    } catch (err) {
+      console.error(`Failed to add temporary contact: ${phone}`, err.message);
+      return null;
+    }
+  }
+
   // Function to add members to a group or channel (admin-only)
   async function addMembersToGroupOrChannel() {
     console.clear();
 
     // Select a JSON file
-    const files = fs.readdirSync(dumpDir).filter((file) => file.endsWith(".json"));
+    const files = fs
+      .readdirSync(dumpDir)
+      .filter((file) => file.endsWith(".json"));
     if (files.length === 0) {
       console.log("No JSON files found in the dump directory.");
       console.log("\nReturning to the main menu...");
@@ -260,29 +297,33 @@ async function saveSession(client) {
     }
 
     const members = fs.readJsonSync(path.join(dumpDir, selectedFile));
-    console.log(gradient.fruit(`Loaded ${members.length} members from ${selectedFile}`));
+    console.log(
+      gradient.fruit(`Loaded ${members.length} members from ${selectedFile}`)
+    );
 
     // Select a target group/channel (admin-only)
     const dialogs = await client.getDialogs();
     const adminGroupsAndChannels = [];
 
     for (const dialog of dialogs) {
-      if (dialog.isGroup || (dialog.isChannel && dialog.entity.megagroup)) {
+      if (dialog.isGroup || dialog.isChannel) {
         try {
-          const participants = await client.getParticipants(dialog.id);
-          const me = participants.find(
-            async (p) => p.id === (await client.getMe()).id
-          );
-          if (me && me.adminRights) {
+          if (dialog.entity.adminRights) {
             adminGroupsAndChannels.push(dialog);
           }
         } catch (err) {
-          console.error(chalk.red(`Error checking admin status for ${dialog.title || dialog.name}: ${err.message}`));
+          console.error(
+            chalk.red(
+              `Error checking admin status for ${
+                dialog.title || dialog.name
+              }: ${err.message}`
+            )
+          );
         }
       }
     }
 
-    if (adminGroupsAndChannels.length === 0) {
+    if (adminGroupsAndChannels.length == 0) {
       console.log(chalk.red("You are not an admin in any group or channel."));
       console.log("\nReturning to the main menu...");
       await inquirer.prompt([
@@ -312,16 +353,43 @@ async function saveSession(client) {
     if (!selectedDialog) return;
 
     console.log(
-      gradient.vice(`Adding members to: ${selectedDialog.title} (ID: ${selectedDialog.id})\n`)
+      gradient.vice(
+        `Adding members to: ${selectedDialog.title} (ID: ${selectedDialog.id})\n`
+      )
     );
 
     // Add members to the group/channel
     for (const member of members) {
+      let entity;
+      const tempContact = await addUserAsContact(
+        client,
+        "+1234567890",
+        member.firstName,
+        member.lastName
+      );
+      if (tempContact) {
+        entity = await resolveEntity(client, tempContact.id);
+      }
+      if (!entity) continue;
+
       try {
-        await client.addChatUser(selectedDialog.id, member.id, {
-          fwdLimit: 0,
-        });
-        console.log(gradient.mind(`Added member: ${member.username || member.id}`));
+        await client.invoke(
+          new Api.messages.AddChatUser({
+            chatId: BigInt(selectedDialog.id),
+            userId: member.id,
+          })
+        );
+
+        // await client.invoke(
+        //   new Api.channels.InviteToChannel({
+        //     channel: selectedDialog.id,
+        //     users: [userEntity],
+        //   })
+        // );
+        console.log(
+          gradient.mind(`Added member: ${member.username || member.id}`)
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (err) {
         console.error(
           chalk.red(`Failed to add member: ${member.username || member.id}`),
@@ -387,6 +455,14 @@ async function saveSession(client) {
     console.log(gradient.cristal("Sending messages...\n"));
     for (const member of members) {
       try {
+        const userEntity = await resolveEntity(client, member.id);
+        if (!userEntity) {
+          console.error(
+            `Failed to resolve entity for: ${member.username || member.id}`
+          );
+          continue;
+        }
+
         await client.sendMessage(member.id, { message });
         console.log(
           gradient.mind(`Message sent to ${member.username || member.id}`)
